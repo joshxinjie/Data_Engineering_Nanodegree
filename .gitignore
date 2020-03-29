@@ -1,3 +1,4 @@
 # Ignore word document notes
 Notes
 *.csv
+*.cfg
