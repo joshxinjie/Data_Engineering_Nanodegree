@@ -103,22 +103,22 @@ python etl.py
 %sql SELECT * FROM users LIMIT 5;
 ```
 
-<img src="images/users.png" alt="drawing" width="800"/>
+<img src="images/users.png" alt="drawing" width="600"/>
 
 ```
 %sql SELECT * FROM songs LIMIT 5;
 ```
 
-<img src="images/songs.png" alt="drawing" width="800"/>
+<img src="images/songs.png" alt="drawing" width="600"/>
 
 ```
 %sql SELECT * FROM artists LIMIT 5;
 ```
 
-<img src="images/artists.png" alt="drawing" width="800"/>
+<img src="images/artists.png" alt="drawing" width="600"/>
 
 ```
 %sql SELECT * FROM time LIMIT 5;
 ```
 
-<img src="images/time.png" alt="drawing" width="800"/>
+<img src="images/time.png" alt="drawing" width="600"/>
