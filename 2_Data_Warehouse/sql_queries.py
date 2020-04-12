@@ -127,18 +127,18 @@ staging_songs_copy = ("""
 
 songplay_table_insert = ("""
     INSERT INTO songplay (start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
-    SELECT DISTINCT e.ts AS start_time,
-    e.userId AS user_id,
-    e.level AS level,
-    s.song_id AS song_id,
-    s.artist_id AS artist_id,
-    e.sessionId AS session_id,
-    e.location AS location,
-    e.userAgent AS user_agent
-    FROM staging_events e
-    LEFT JOIN staging_songs s
-    ON e.song = s.title AND e.artist = s.artist_name
-    WHERE e.page = 'NextSong';
+        (SELECT DISTINCT e.ts AS start_time,
+        e.userId AS user_id,
+        e.level AS level,
+        s.song_id AS song_id,
+        s.artist_id AS artist_id,
+        e.sessionId AS session_id,
+        e.location AS location,
+        e.userAgent AS user_agent
+        FROM staging_events e
+        LEFT JOIN staging_songs s
+        ON e.song = s.title AND e.artist = s.artist_name
+        WHERE e.page = 'NextSong');
 """)
 
 user_table_insert = ("""
@@ -150,9 +150,7 @@ user_table_insert = ("""
         level
         FROM staging_events
         WHERE user_id IS NOT NULL
-        AND page = 'NextSong')
-    ON CONFLICT (user_id)
-    DO UPDATE SET level = EXCLUDED.level;
+        AND page = 'NextSong');
 """)
 
 song_table_insert = ("""
@@ -163,8 +161,7 @@ song_table_insert = ("""
         year,
         duration
         FROM staging_songs
-        WHERE song_id IS NOT NULL)
-    ON CONFLICT (song_id) DO NOTHING;
+        WHERE song_id IS NOT NULL);
 """)
 
 artist_table_insert = ("""
@@ -175,8 +172,7 @@ artist_table_insert = ("""
         artist_latitude AS latitude,
         artist_longitude AS longitude
         FROM staging_songs
-        WHERE artist_id IS NOT NULL)
-    ON CONFLICT (artist_id) DO NOTHING;
+        WHERE artist_id IS NOT NULL);
 """)
 
 time_table_insert = ("""
@@ -189,40 +185,39 @@ time_table_insert = ("""
         EXTRACT(year FROM ts) AS year,
         EXTRACT(dayofweek FROM ts) AS weekday
         FROM staging_events
-        WHERE ts IS NOT NULL)
-    ON CONFLICT (start_time) DO NOTHING;
+        WHERE ts IS NOT NULL);
 """)
 
 # Example queries for analytics tables
 
 get_top_5_songplays = ("""
     SELECT * 
-    FROM songplays
-    LIMIT 5;
+    FROM songplay
+    LIMIT 2;
 """)
 
 get_top_5_users = ("""
     SELECT * 
     FROM users
-    LIMIT 5;
+    LIMIT 2;
 """)
 
 get_top_5_songs = ("""
     SELECT * 
     FROM songs
-    LIMIT 5;
+    LIMIT 2;
 """)
 
 get_top_5_artists = ("""
     SELECT * 
     FROM artists
-    LIMIT 5;
+    LIMIT 2;
 """)
 
 get_top_5_time = ("""
     SELECT * 
     FROM time
-    LIMIT 5;
+    LIMIT 2;
 """)
 
 # QUERY LISTS

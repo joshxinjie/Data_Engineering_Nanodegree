@@ -1,3 +1,5 @@
+import time
+
 import boto3
 import configparser
 
@@ -74,7 +76,10 @@ def delete_cluster(redshift, cluster_identifier):
     
     cluster_identifier=DWH_CLUSTER_IDENTIFIER
     """
-    redshift.delete_cluster(ClusterIdentifier=cluster_identifier,  SkipFinalClusterSnapshot=True)
+    try:
+        redshift.delete_cluster(ClusterIdentifier=cluster_identifier,  SkipFinalClusterSnapshot=True)
+    except Exception as e:
+        print(e)
     
     return None
 
@@ -91,8 +96,10 @@ def wait_till_cluster_deleted(redshift, cluster_identifier):
     cluster_not_deleted = True
     
     while cluster_not_deleted:
-        cluster_properties = redshift.describe_clusters(ClusterIdentifier=cluster_identifier)['Clusters'][0]
-        if not cluster_properties:
+        try:
+            cluster_properties = redshift.describe_clusters(ClusterIdentifier=cluster_identifier)['Clusters'][0]
+        except Exception as e:
+            print(e)
             cluster_not_deleted = False
         time.sleep(1)
         
@@ -100,7 +107,7 @@ def wait_till_cluster_deleted(redshift, cluster_identifier):
     
     return None
 
-def delete_role_arn(config_dict):
+def delete_role_arn(iam, config_dict):
     """
     Detach and delete the roleARN.
     
@@ -121,6 +128,8 @@ if __name__ == "__main__":
     config_file_path = "dwh.cfg"
     config_dict = read_dwh_config(config_file_path)
     
+    print(config_dict)
+    
     clients_dict = create_clients(region_name="ap-southeast-1",\
                                   aws_access_key_id=config_dict["KEY"],\
                                   aws_secret_access_key=config_dict["SECRET"])
@@ -131,4 +140,5 @@ if __name__ == "__main__":
     wait_till_cluster_deleted(redshift=clients_dict["redshift"],\
                               cluster_identifier=config_dict["DWH_CLUSTER_IDENTIFIER"])
     
-    delete_role_arn(config_dict=config_dict)
+    delete_role_arn(iam=clients_dict["iam"],\
+                    config_dict=config_dict)

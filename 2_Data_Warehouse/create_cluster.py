@@ -116,6 +116,8 @@ def create_redshift_cluster(redshift, config_dict, role_arn):
     @type role_arn: str
     @rtype: None
     """
+    print("Creating Redshift Cluster. Please wait till cluster is available...")
+    
     response = redshift.create_cluster(        
         # Add parameters for hardware
         ClusterType=config_dict["DWH_CLUSTER_TYPE"],
@@ -150,7 +152,7 @@ def wait_till_cluster_available(cluster_identifier, redshift):
             cluster_loading = False
         time.sleep(1)
         
-    print("Cluster is available...")
+    print("Cluster is available")
     print("Cluster Endpoint: "+str(cluster_properties["Endpoint"]["Address"]))
     
     return cluster_properties
