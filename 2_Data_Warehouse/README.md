@@ -123,7 +123,7 @@ log_data/2018/11/2018-11-13-events.json
 
 An example of of what the data in a log file, 2018-11-12-events.json, looks like
 
-<img src="images/log-data.png" alt="drawing" width="400"/>
+<img src="images/log-data.png" alt="drawing" width="600"/>
 
 **log_json_path.json**: A JSONPath file mapping the JSON elements in the log_data to the appropriate columns in the Redshuft staging table `staging_events` .
 
