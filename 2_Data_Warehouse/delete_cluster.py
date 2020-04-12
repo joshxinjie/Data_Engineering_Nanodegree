@@ -76,6 +76,8 @@ def delete_cluster(redshift, cluster_identifier):
     
     cluster_identifier=DWH_CLUSTER_IDENTIFIER
     """
+    print("Deleting cluster. Please wait...")
+
     try:
         redshift.delete_cluster(ClusterIdentifier=cluster_identifier,  SkipFinalClusterSnapshot=True)
     except Exception as e:
@@ -103,7 +105,7 @@ def wait_till_cluster_deleted(redshift, cluster_identifier):
             cluster_not_deleted = False
         time.sleep(1)
         
-    print("Cluster is deleted...")
+    print("Cluster is deleted")
     
     return None
 
@@ -120,15 +122,13 @@ def delete_role_arn(iam, config_dict):
                            PolicyArn="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess")
     iam.delete_role(RoleName=role_arn)
     
-    print("RoleArn is deleted...")
+    print("RoleArn is deleted")
     
     return None
 
 if __name__ == "__main__":
     config_file_path = "dwh.cfg"
     config_dict = read_dwh_config(config_file_path)
-    
-    print(config_dict)
     
     clients_dict = create_clients(region_name="ap-southeast-1",\
                                   aws_access_key_id=config_dict["KEY"],\
