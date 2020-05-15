@@ -10,7 +10,7 @@ We will use AWS Elastic Map Reduce (EMR) as well as S3 to manage our Data Lake a
 
 ## Database Schema
 
-The Star schema is used for the analytics tables on the AWS Redshift cluster, since the schema optimizes queries on song play analysis. There are other benefits for using the Star schema. These includes having denormalize tables, simplified queries, and fast aggregation of the data. The Star schema is usually less ideal for handling one-to-many or many-to-many relationships between the tables. Hence, the following tables are created to have only one-to-one relationships. Below is a list of the analytics tables.
+The Star schema is used for the analytics tables on the AWS EMR cluster, since the schema optimizes queries on song play analysis. There are other benefits for using the Star schema. These includes having denormalize tables, simplified queries, and fast aggregation of the data. The Star schema is usually less ideal for handling one-to-many or many-to-many relationships between the tables. Hence, the following tables are created to have only one-to-one relationships. Below is a list of the analytics tables.
 
 
 **Fact Table**
