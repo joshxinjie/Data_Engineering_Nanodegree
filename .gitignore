@@ -1,4 +1,8 @@
 # Ignore word document notes
 Notes
+Video_Lectures
 *.csv
+*.json
 *.cfg
+*.parquet
+*.DS_Store
