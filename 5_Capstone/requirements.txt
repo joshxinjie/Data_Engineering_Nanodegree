@@ -1,0 +1,5 @@
+pandas
+pyspark
+jupyter
+boto3
+configparser

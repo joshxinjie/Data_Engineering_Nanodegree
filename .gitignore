@@ -1,6 +1,7 @@
 # Ignore word document notes
 Notes
 Video_Lectures
+sample_data
 *.csv
 *.json
 *.cfg
