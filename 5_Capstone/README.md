@@ -62,7 +62,6 @@ docker-compose -f docker-compose-CeleryExecutor.yml up -d
 http://localhost:8080/admin/
 docker-compose -f docker-compose-CeleryExecutor.yml down
 
-
 Other Approach
 Read i94 immigration data into Spark
 Read original IATA airport code data into Spark

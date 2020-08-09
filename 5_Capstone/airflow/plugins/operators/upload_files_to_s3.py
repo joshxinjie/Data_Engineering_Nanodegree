@@ -45,7 +45,7 @@ class UploadFilesToS3Operator(BaseOperator):
                     s3_key = filename
                 self.log.info(f"Uploading \n File: {filename} \n S3 Key: {s3_key} \n S3 Bucket: {self.s3_bucket}")
                 #s3_hook.load_file(filename=filepath, key=filename, bucket_name=self.s3_bucket)
-                s3_hook.load_file(filename=filepath, key=s3_key, bucket_name=self.s3_bucket)
+                s3_hook.load_file(filename=filepath, key=s3_key, bucket_name=self.s3_bucket, replace=True)
                 self.log.info(f"Uploaded \n File: {filename} \n S3 Key: {s3_key} \n S3 Bucket: {self.s3_bucket}")
             except:
                 self.log.info(f"Unable to Upload \n File: {filename} \n S3 Key: {s3_key} \n S3 Bucket: {self.s3_bucket}")
