@@ -45,7 +45,7 @@ EMR_STEPS = [
         }
     },
     {
-        'Name': 'setup - copy files',
+        'Name': 'Setup - copy files',
         'ActionOnFailure': 'CANCEL_AND_WAIT',
         'HadoopJarStep': {
             'Jar': 'command-runner.jar',
@@ -53,7 +53,7 @@ EMR_STEPS = [
         }
     },
     {
-        'Name': 'setup - install libraries',
+        'Name': 'Setup - install libraries',
         'ActionOnFailure': 'CANCEL_AND_WAIT',
         'HadoopJarStep': {
             'Jar': 'command-runner.jar',
@@ -76,13 +76,28 @@ EMR_STEPS = [
                 S3_DATALAKE_BUCKET
                 ]
         }
+    },
+    {
+        'Name': 'Check data quality on Spark',
+        'ActionOnFailure': 'CANCEL_AND_WAIT',
+        'HadoopJarStep': {
+            'Jar': 'command-runner.jar',
+            'Args': [
+                'spark-submit',\
+                '--packages',\
+                'saurfang:spark-sas7bdat:2.0.0-s_2.11',\
+                '/home/hadoop/src/data_quality_check.py',\
+                AWS_ACCESS_KEY_ID,\
+                AWS_SECRET_ACCESS_KEY,\
+                S3_DATALAKE_BUCKET
+                ]
+        }
     }
 ]
 
 JOB_FLOW_OVERRIDES = {
     'Name': 'spark-emr-cluster',
     'ReleaseLabel': 'emr-5.29.0',
-    #'LogUri': os.path.join('s3://', S3_LOGS_BUCKET_NAME, 'elasticmapreduce/'),
     'LogUri': "".join(["s3://", S3_LOGS_BUCKET_NAME]),
     'Instances': {
         'InstanceGroups': [
@@ -163,35 +178,41 @@ create_emr_logs_bucket = CreateS3BucketOperator(
     dag=dag
 )
 
-#s3_bucket_created = DummyOperator(task_id='S3_bucket_created', dag=dag)
-
 cluster_creator = EmrCreateJobFlowOperator(
-        task_id='Create_EMR_job_flow',
-        job_flow_overrides=JOB_FLOW_OVERRIDES,
-        aws_conn_id='aws_credentials',
-        emr_conn_id='emr_default',
-        dag=dag
-    )
+    task_id='Create_EMR_ETL_job_flow',
+    job_flow_overrides=JOB_FLOW_OVERRIDES,
+    aws_conn_id='aws_credentials',
+    emr_conn_id='emr_default',
+    dag=dag
+)
 
 step_adder = EmrAddStepsOperator(
     task_id='Add_EMR_steps',
-    job_flow_id="{{ task_instance.xcom_pull(task_ids='Create_EMR_job_flow', key='return_value') }}",
+    job_flow_id="{{ task_instance.xcom_pull(task_ids='Create_EMR_ETL_job_flow', key='return_value') }}",
     aws_conn_id='aws_credentials',
     steps=EMR_STEPS,
     dag=dag
 )
 
-step_checker = EmrStepSensor(
-    task_id='Watch_EMR_step',
-    job_flow_id="{{ task_instance.xcom_pull('Create_EMR_job_flow', key='return_value') }}",
-    step_id="{{ task_instance.xcom_pull(task_ids='Add_EMR_steps', key='return_value')[0] }}",
+watch_etl = EmrStepSensor(
+    task_id='Watch_EMR_ETL_step',
+    job_flow_id="{{ task_instance.xcom_pull('Create_EMR_ETL_job_flow', key='return_value') }}",
+    step_id="{{ task_instance.xcom_pull(task_ids='Add_EMR_steps', key='return_value')[3] }}",
+    aws_conn_id='aws_credentials',
+    dag=dag
+)
+
+watch_data_quality_check = EmrStepSensor(
+    task_id='Watch_EMR_data_quality_check_step',
+    job_flow_id="{{ task_instance.xcom_pull('Create_EMR_ETL_job_flow', key='return_value') }}",
+    step_id="{{ task_instance.xcom_pull(task_ids='Add_EMR_steps', key='return_value')[4] }}",
     aws_conn_id='aws_credentials',
     dag=dag
 )
 
 cluster_remover = EmrTerminateJobFlowOperator(
     task_id='Remove_EMR_cluster',
-    job_flow_id="{{ task_instance.xcom_pull(task_ids='Create_EMR_job_flow', key='return_value') }}",
+    job_flow_id="{{ task_instance.xcom_pull(task_ids='Create_EMR_ETL_job_flow', key='return_value') }}",
     aws_conn_id='aws_credentials',
     dag=dag
 )
@@ -209,6 +230,8 @@ create_emr_logs_bucket >> cluster_creator
 
 cluster_creator >> step_adder
 
-step_adder >> step_checker
+step_adder >> watch_etl
 
-step_checker >> cluster_remover
+watch_etl >> watch_data_quality_check
+
+watch_data_quality_check >> cluster_remover

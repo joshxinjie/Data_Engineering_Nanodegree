@@ -24,8 +24,8 @@ def process_argument():
     # Default argument
     parser.add_argument("aws_access_key_id", type=str, help="Your AWS access key ID")
     parser.add_argument("aws_secret_access_key", type=str, help="Your AWS secret access key")
-    parser.add_argument("raw_data_s3_bucket", type=str, help="S3 bucket containing the raw data")
-    parser.add_argument("transformed_data_s3_bucket", type=str, help="S3 bucket containing the transformed data")
+    parser.add_argument("s3_bucket_raw_data", type=str, help="S3 bucket containing the raw data")
+    parser.add_argument("s3_bucket_transformed_datalake", type=str, help="S3 bucket containing the transformed data")
 
     args = parser.parse_args()
     
@@ -101,12 +101,8 @@ def read_raw_immigration_data(s3_bucket, s3_client, spark, raw_imm_table_columns
 
     for key in s3_client.list_objects(Bucket=s3_bucket, Prefix=raw_imm_folder_prefix)['Contents']:
         files.append(key['Key'])
-    
-    print(files)
 
     s3_data_path = "".join(["s3a://", s3_bucket, "/"])
-
-    print(s3_data_path)
 
     for count, file in enumerate(files):
         file_path = os.path.join(s3_data_path, file)
@@ -212,7 +208,8 @@ def generate_visa_dim_table(raw_imm_df):
     visa_dim_table = raw_imm_df.select(visa_dim_table_col)\
                         .dropDuplicates()\
                         .withColumnRenamed("visatype","visa_type")\
-                        .withColumnRenamed("i94visa","visa_category")
+                        .withColumnRenamed("i94visa","visa_category")\
+                        .where(F.col("visa_type").isNotNull())
     
     return visa_dim_table
 
@@ -247,7 +244,7 @@ def main():
     # s3_data_path = s3://udend-capstone-data-xj/18-83510-I94-Data-2016/*.sas7bdat
     # raw_imm_data_s3_path = "".join([
     #     "s3://",\
-    #     args.raw_data_s3_bucket,\
+    #     args.s3_bucket_raw_data,\
     #     "/18-83510-I94-Data-2016"
     # ])
     #raw_imm_data_s3_path = "../../data/18-83510-I94-Data-2016"
@@ -259,14 +256,14 @@ def main():
     #                 )
 
     raw_imm_data = read_raw_immigration_data(
-                        s3_bucket=args.raw_data_s3_bucket,\
+                        s3_bucket=args.s3_bucket_raw_data,\
                         s3_client=s3_client,\
                         spark=spark,\
                         raw_imm_table_columns=RAW_IMM_DATA_SCHEMA
                     )
     
     # s3_output_path = s3://udend-capstone-datalake-xj
-    transformed_tables_output_path_in_s3 = "".join(["s3://", args.transformed_data_s3_bucket])
+    transformed_tables_output_path_in_s3 = "".join(["s3://", args.s3_bucket_transformed_datalake])
     #transformed_tables_output_path_in_s3 = "output_data"
     
     imm_fact_table = generate_immigration_fact_table(raw_imm_df=raw_imm_data)
