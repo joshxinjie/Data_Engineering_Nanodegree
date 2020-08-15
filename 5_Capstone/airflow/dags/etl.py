@@ -152,8 +152,8 @@ create_code_bucket = CreateS3BucketOperator(
     dag=dag
 )
 
-upload_files_to_s3 = UploadFilesToS3Operator(
-    task_id='Upload_files_to_S3',
+upload_scripts_to_s3 = UploadFilesToS3Operator(
+    task_id='Upload_code_scripts_to_s3',
     aws_credentials_id="aws_credentials",
     source_folder=EMR_ETL_SCRIPTS_LOCAL_DIR,
     s3_target_folder=S3_CODE_KEY_NAME,
@@ -222,9 +222,9 @@ start_operator >> create_code_bucket
 start_operator >> create_datalake_bucket
 start_operator >> create_emr_logs_bucket
 
-create_code_bucket >> upload_files_to_s3
+create_code_bucket >> upload_scripts_to_s3
 
-upload_files_to_s3 >> cluster_creator
+upload_scripts_to_s3 >> cluster_creator
 create_datalake_bucket >> cluster_creator
 create_emr_logs_bucket >> cluster_creator
 

@@ -76,18 +76,24 @@ def main():
     visitor_dim_table = spark.read.parquet(os.path.join(s3_bucket_datalake_path, "visitor.parquet"))
     trip_records_dim_table = spark.read.parquet(os.path.join(s3_bucket_datalake_path, "trip_records.parquet"))
     visa_dim_table = spark.read.parquet(os.path.join(s3_bucket_datalake_path, "visa.parquet"))
+    us_cities_general_demog_table = spark.read.parquet(os.path.join(s3_bucket_datalake_path, "us_cities_general_demog.parquet"))
+    us_cities_race_demog_table = spark.read.parquet(os.path.join(s3_bucket_datalake_path, "us_cities_race_demog.parquet"))
 
     check_empty_table(spark_df=imm_fact_table, spark_df_name="immigration")
     check_empty_table(spark_df=flight_dim_table, spark_df_name="flight")
     check_empty_table(spark_df=visitor_dim_table, spark_df_name="visitor")
     check_empty_table(spark_df=trip_records_dim_table, spark_df_name="trip_records")
     check_empty_table(spark_df=visa_dim_table, spark_df_name="visa")
+    check_empty_table(spark_df=us_cities_general_demog_table, spark_df_name="us_cities_general_demog")
+    check_empty_table(spark_df=us_cities_race_demog_table, spark_df_name="us_cities_race_demog")
 
     imm_table_nonull_columns = ["immigration_id"]
     flight_table_nonull_columns = ["flight_number"]
     visitor_table_nonull_columns = ["immigration_id"]
     trip_records_table_nonull_columns = ["immigration_id"]
     visa_table_nonull_columns = ["visa_type"]
+    us_cities_general_demog_nonull_columns = ["us_port_of_arrival_code"]
+    us_cities_race_demog_nonull_columns = ["us_port_of_arrival_code"]
 
     check_table_columns_for_null_values(
         spark_df=imm_fact_table,\
@@ -113,6 +119,16 @@ def main():
         spark_df=visa_dim_table,\
         spark_df_name="visa",\
         columns_to_check=visa_table_nonull_columns
+    )
+    check_table_columns_for_null_values(
+        spark_df=us_cities_general_demog_table,\
+        spark_df_name="us_cities_general_demog",\
+        columns_to_check=us_cities_general_demog_nonull_columns
+    )
+    check_table_columns_for_null_values(
+        spark_df=us_cities_race_demog_table,\
+        spark_df_name="us_cities_race_demog",\
+        columns_to_check=us_cities_race_demog_nonull_columns
     )
     
 if __name__ == "__main__":

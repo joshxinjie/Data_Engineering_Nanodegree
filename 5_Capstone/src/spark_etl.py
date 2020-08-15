@@ -1,19 +1,14 @@
+import re
 import os
 import argparse
 
 import boto3
+import numpy as np
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType as R,\
     StructField as Fld, DoubleType as Dbl, StringType as Str,\
     IntegerType as Int, DateType as Date, TimestampType as TimeStamp
-
-RAW_IMM_DATA_SCHEMA = ['cicid', 'i94yr', 'i94mon', 'i94cit', 'i94res',\
-                       'i94port', 'arrdate', 'i94mode', 'i94addr', 'depdate',\
-                       'i94bir', 'i94visa', 'count', 'dtadfile', 'visapost',\
-                       'occup', 'entdepa', 'entdepd', 'entdepu', 'matflag',\
-                       'biryear', 'dtaddto', 'gender', 'insnum', 'airline',\
-                       'admnum', 'fltno', 'visatype']
 
 def process_argument():
     """
@@ -22,16 +17,44 @@ def process_argument():
     parser = argparse.ArgumentParser()
 
     # Default argument
-    parser.add_argument("aws_access_key_id", type=str, help="Your AWS access key ID")
-    parser.add_argument("aws_secret_access_key", type=str, help="Your AWS secret access key")
-    parser.add_argument("s3_bucket_raw_data", type=str, help="S3 bucket containing the raw data")
-    parser.add_argument("s3_bucket_transformed_datalake", type=str, help="S3 bucket containing the transformed data")
+    parser.add_argument(
+        "aws_access_key_id",\
+        type=str,\
+        help="Your AWS access key ID")
+    parser.add_argument(
+        "aws_secret_access_key",\
+        type=str,\
+        help="Your AWS secret access key"
+    )
+    parser.add_argument(
+        "s3_bucket_raw_data",\
+        type=str,\
+        help="S3 bucket containing the raw data"
+    )
+    parser.add_argument(
+        "s3_bucket_transformed_datalake",\
+        type=str,\
+        help="S3 bucket containing the transformed data"
+    )
+    parser.add_argument(
+        "--immigration_data_folder_name",\
+        type=str, default="18-83510-I94-Data-2016",\
+        help="The name of the immigration data folder in S3"
+    )
+    parser.add_argument(
+        "--us_cities_demog_filename",\
+        type=str,\
+        default="us-cities-demographics.csv",\
+        help="The name of the us cities demographics file in S3"
+    )
+    parser.add_argument(
+        "--immigration_data_dictionary_filename",\
+        type=str,\
+        default="I94_SAS_Labels_Descriptions.SAS",\
+        help="The name of the immigration data dictionary file in S3"
+    )
 
     args = parser.parse_args()
-    
-    # For checking purposes
-    print(args.aws_access_key_id)
-    print(args.aws_secret_access_key)
     
     return args
 
@@ -120,18 +143,19 @@ def read_raw_immigration_data(s3_bucket, s3_client, spark, raw_imm_table_columns
     return raw_imm_df
 
 def generate_immigration_fact_table(raw_imm_df):
-    imm_fact_table_col = ["immigration_id", "fltno", "visatype", "i94yr", "i94mon"]
+    imm_fact_table_col = ["immigration_id", "fltno", "visatype", "i94port", "i94yr", "i94mon"]
 
     imm_fact_table = raw_imm_df.select(imm_fact_table_col)\
                         .dropDuplicates()\
                         .withColumnRenamed("fltno","flight_number")\
                         .withColumnRenamed("visatype","visa_type")\
+                        .withColumnRenamed("i94port","us_port_of_arrival_code")\
                         .withColumn("_year", raw_imm_df.i94yr.cast(Int()))\
                         .drop("i94yr")\
                         .withColumn("_month", raw_imm_df.i94mon.cast(Int()))\
                         .drop("i94mon")
     
-    ordered_col = ["immigration_id", "flight_number", "visa_type", "_year", "_month"]
+    ordered_col = ["immigration_id", "flight_number", "visa_type", "us_port_of_arrival_code", "_year", "_month"]
 
     imm_fact_table = imm_fact_table.select(ordered_col)
 
@@ -164,7 +188,7 @@ def generate_visitor_dimension_table(raw_imm_df):
 def generate_trip_records_dimension_table(raw_imm_df):
     trip_records_dim_table_col = [
         "immigration_id", "arrdate", "i94yr", "i94mon", "i94cit",\
-        "i94port", "depdate", "dtadfile", "entdepa", "entdepd",\
+        "depdate", "dtadfile", "entdepa", "entdepd",\
         "matflag", "dtaddto", "visapost"
     ]
 
@@ -180,7 +204,6 @@ def generate_trip_records_dimension_table(raw_imm_df):
                                 .withColumn('_month', F.col("month_of_arrival"))\
                                 .withColumn("country_of_prev_depart", raw_imm_df.i94cit.cast(Int()))\
                                 .drop("i94cit")\
-                                .withColumnRenamed("i94port","port_of_arrival_code")\
                                 .withColumn("depart_date", raw_imm_df.depdate.cast(Int()))\
                                 .drop("depdate")\
                                 .withColumn("date_of_file_entry", raw_imm_df.dtadfile.cast(Int()))\
@@ -194,8 +217,8 @@ def generate_trip_records_dimension_table(raw_imm_df):
 
     ordered_col = [
         "immigration_id", "arrival_date", "year_of_arrival", "month_of_arrival", "country_of_prev_depart",\
-        "port_of_arrival_code", "depart_date", "date_of_file_entry", "arrival_flag", "departure_flag",\
-        "match_flag", "last_permitted_day_of_stay", "state_of_visa_issued", "_year", "_month"
+        "depart_date", "date_of_file_entry", "arrival_flag", "departure_flag", "match_flag",\
+        "last_permitted_day_of_stay", "state_of_visa_issued", "_year", "_month"
     ]
 
     trip_records_dim_table = trip_records_dim_table.select(ordered_col)
@@ -225,11 +248,78 @@ def write_table_to_parquet_in_s3(table_df, table_name, s3_output_bucket_path, pa
             .parquet(os.path.join(s3_output_bucket_path, full_table_name))
 
 
+def extract_new_columns(original_column):
+    new_columns = original_column.split(";")
+    # lower-case column names
+    new_columns = [new_col.lower() for new_col in new_columns]
+    # replace space with underscore in column names
+    new_columns = [new_col.replace(" ", "_") for new_col in new_columns]
+    return new_columns
+
+def clean_cities_demog_table(us_cities_demog_df):
+    original_column = us_cities_demog_df.columns[0]
+    new_columns = extract_new_columns(original_column)
+    
+    for i, single_new_col in enumerate(new_columns):
+        if i == 0:
+            new_us_cities_demog_df = us_cities_demog_df.withColumn(single_new_col, F.split(F.col(original_column), ";").getItem(i))
+        else:
+            new_us_cities_demog_df = new_us_cities_demog_df.withColumn(single_new_col, F.split(F.col(original_column), ";").getItem(i))
+    new_us_cities_demog_df = new_us_cities_demog_df.drop(original_column)
+    new_us_cities_demog_df = new_us_cities_demog_df.withColumn("city_id", F.monotonically_increasing_id())
+    
+    return new_us_cities_demog_df
+
+def extract_sub_df(df, columns):
+    sub_df = df.select(columns).dropDuplicates()
+    return sub_df
+
+def extract_city_and_state(city_state_str):
+    if "," in city_state_str:
+        city, state = city_state_str.split(",")[0].strip(),\
+                        city_state_str.split(",")[1].strip()
+    else:
+        city = city_state_str
+        state = np.nan
+    city = city.title()
+    return city, state
+
+def extract_ports_and_cities(txt_file, schema, spark):
+    processing_i94port = False
+
+    ports_and_cities_df_values = []
+    
+    unwanted_chars = r'[^a-zA-Z0-9(), ]'
+
+    for line in txt_file:
+        if "I94PORT" in line:
+            processing_i94port = True
+        if processing_i94port and "=" in line:
+            i94port, city_w_state = line.split("=")[0], line.split("=")[1]
+            # remove unwanted characters from string
+            i94port = re.sub(unwanted_chars, '', i94port).strip()
+            city_w_state = re.sub(unwanted_chars, '', city_w_state)
+            city, state = extract_city_and_state(city_w_state)
+            ports_and_cities_df_values.append((i94port, city))
+        if processing_i94port and (";" in line):
+            processing_i94port = False
+            break
+    
+    ports_and_cities_df = spark.createDataFrame(ports_and_cities_df_values, schema=schema)
+    
+    return ports_and_cities_df
+
+
 def main():
     args = process_argument()
 
     os.environ['AWS_ACCESS_KEY_ID']=args.aws_access_key_id
     os.environ['AWS_SECRET_ACCESS_KEY']=args.aws_secret_access_key
+
+    s3_bucket_raw_data = args.s3_bucket_raw_data
+    s3_bucket_transformed_datalake = args.s3_bucket_transformed_datalake
+    us_cities_demog_filename = args.us_cities_demog_filename
+    immigration_data_dictionary_filename = args.immigration_data_dictionary_filename
 
     # create boto3 s3 client
     s3_client = create_client(
@@ -244,7 +334,7 @@ def main():
     # s3_data_path = s3://udend-capstone-data-xj/18-83510-I94-Data-2016/*.sas7bdat
     # raw_imm_data_s3_path = "".join([
     #     "s3://",\
-    #     args.s3_bucket_raw_data,\
+    #     s3_bucket_raw_data,\
     #     "/18-83510-I94-Data-2016"
     # ])
     #raw_imm_data_s3_path = "../../data/18-83510-I94-Data-2016"
@@ -252,18 +342,35 @@ def main():
     # raw_imm_data = read_raw_immigration_data(
     #                     s3_data_path=raw_imm_data_s3_path,\
     #                     spark=spark,\
-    #                     columns=RAW_IMM_DATA_SCHEMA
+    #                     columns=raw_imm_data_schema
     #                 )
+    raw_immigration_folder_name_in_s3 = args.immigration_data_folder_name
+    raw_immigration_folder_prefix = "".join([raw_immigration_folder_name_in_s3, "/"])
 
+    raw_imm_data_schema = [
+        'cicid', 'i94yr', 'i94mon', 'i94cit', 'i94res',\
+        'i94port', 'arrdate', 'i94mode', 'i94addr', 'depdate',\
+        'i94bir', 'i94visa', 'count', 'dtadfile', 'visapost',\
+        'occup', 'entdepa', 'entdepd', 'entdepu', 'matflag',\
+        'biryear', 'dtaddto', 'gender', 'insnum', 'airline',\
+        'admnum', 'fltno', 'visatype'
+    ]
     raw_imm_data = read_raw_immigration_data(
-                        s3_bucket=args.s3_bucket_raw_data,\
+                        s3_bucket=s3_bucket_raw_data,\
                         s3_client=s3_client,\
                         spark=spark,\
-                        raw_imm_table_columns=RAW_IMM_DATA_SCHEMA
+                        raw_imm_table_columns=raw_imm_data_schema,\
+                        raw_imm_folder_prefix=raw_immigration_folder_prefix
                     )
     
+    us_cities_data_path_in_s3 = "".join(["s3a://", s3_bucket_raw_data, "/", us_cities_demog_filename])
+    us_cities_demog_table = spark.read.option("header",True).csv(us_cities_data_path_in_s3)
+
+    s3_client.download_file(Bucket=s3_bucket_raw_data, Key=immigration_data_dictionary_filename, Filename=immigration_data_dictionary_filename)
+    immigration_data_dictionary = open(immigration_data_dictionary_filename, "r")
+    
     # s3_output_path = s3://udend-capstone-datalake-xj
-    transformed_tables_output_path_in_s3 = "".join(["s3://", args.s3_bucket_transformed_datalake])
+    transformed_tables_output_path_in_s3 = "".join(["s3://", s3_bucket_transformed_datalake])
     #transformed_tables_output_path_in_s3 = "output_data"
     
     imm_fact_table = generate_immigration_fact_table(raw_imm_df=raw_imm_data)
@@ -302,6 +409,53 @@ def main():
     write_table_to_parquet_in_s3(
         table_df=visa_dim_table,\
         table_name="visa",\
+        s3_output_bucket_path=transformed_tables_output_path_in_s3,\
+        partition_by_year_month=False
+    )
+
+    seperated_us_cities_demog = clean_cities_demog_table(us_cities_demog_table)
+
+    ports_and_cities_schema = R([
+        Fld("us_port_of_arrival_code", Str()),
+        Fld("city", Str())
+    ])
+    ports_and_cities_table = extract_ports_and_cities(
+        txt_file=immigration_data_dictionary,\
+        schema=ports_and_cities_schema,\
+        spark=spark
+    )
+
+    us_cities_demog_w_port_of_arrival_code = ports_and_cities_table.join(
+                                                seperated_us_cities_demog,\
+                                                ["city"]
+                                            )
+
+    general_demog_cols = [
+        "us_port_of_arrival_code", "city", "state", "median_age", "male_population",\
+        "female_population", "total_population", "number_of_veterans",\
+        "foreign-born", "average_household_size", "state_code"
+    ]
+    us_cities_general_demog_table = extract_sub_df(
+        df=us_cities_demog_w_port_of_arrival_code,\
+        columns=general_demog_cols
+    )
+    write_table_to_parquet_in_s3(
+        table_df=us_cities_general_demog_table,\
+        table_name="us_cities_general_demog",\
+        s3_output_bucket_path=transformed_tables_output_path_in_s3,\
+        partition_by_year_month=False
+    )
+
+    race_demog_cols = [
+        "us_port_of_arrival_code", "race", "count"
+    ]
+    us_cities_race_demog_table = extract_sub_df(
+        df=us_cities_demog_w_port_of_arrival_code,\
+        columns=race_demog_cols
+    )
+    write_table_to_parquet_in_s3(
+        table_df=us_cities_race_demog_table,\
+        table_name="us_cities_race_demog",\
         s3_output_bucket_path=transformed_tables_output_path_in_s3,\
         partition_by_year_month=False
     )
