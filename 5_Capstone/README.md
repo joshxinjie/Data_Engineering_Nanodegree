@@ -211,11 +211,11 @@ docker-compose -f docker-compose-CeleryExecutor.yml down
 
 ### 1. If the data was increased by 100x.
 
-Currently the Airflow server is run on a single container on a local server. If the data was increased by 100x, we may need to run our Airflow server on a cluster of machines. One option will be to host the Ariflow server on AWS EC2 instances.
+Currently the Airflow server is run on a single container on a local server. If the data was increased by 100x, we may need to run our Airflow server on a cluster of machines. One option will be to host the Ariflow server on an AWS EC2 instance.
 
-The ETL pipeline is currently performed by AWS EMR service. Should the size the of data increase by 100x, we simply only need to increase the number of EMR nodes used to execute the pipeline.
+The ETL pipeline is currently performed by AWS EMR service. Should the size the of the data be increased by 100x, we simply only need to increase the number of EMR nodes used to execute the pipeline.
 
-Lastly, the S3 buckets can easily handle storage for extremely large datasets so the increase in the size of the data will not be an issue.
+Lastly, the S3 buckets can easily handle storage for extremely large datasets, so the increase in the size of the data will not be an issue.
 
 ### 2. If the pipelines were run on a daily basis by 7am.
 
