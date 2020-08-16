@@ -9,6 +9,6 @@
 
 4. [Data Lake with AWS EMR and S3](3_Data_Lake): Build an ETL pipeline that extracts data from S3, processes them using Spark, and loads the data back into S3 as a set of dimensional tables.
 
-5. Data Pipelines with Airflow
+5. [Data Pipelines with Airflow](4_Data_Pipelines): Build a data pipeline using Apache Airflow and AWS Redshift.
 
-6. Capstone
+6. [Capstone](5_Capstone)
