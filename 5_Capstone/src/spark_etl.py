@@ -86,39 +86,23 @@ def create_spark_session():
             .enableHiveSupport().getOrCreate()
     return spark
 
-# def generate_immigration_schema(template_immigration_df_path, spark):
-#     """
-#     template_immigration_df_path="../../../data/18-83510-I94-Data-2016/i94_apr16_sub.sas7bdat"
-#     """
-#     imm_data_apr16_spark = spark.read.format('com.github.saurfang.sas.spark').load(templat_immigration_df_path)
-#     schema_columns = imm_data_apr16_spark.schema.names
-    
-#     return schema_columns
-
-# def read_raw_immigration_data(s3_data_path, spark, columns):
-#     """
-#     s3_data_path=../../data/18-83510-I94-Data-2016
-#     """
-#     files = os.listdir(s3_data_path)
-
-#     for count, file in enumerate(files):
-#         file_path = os.path.join(s3_data_path, file)
-#         if count == 0:
-#             raw_imm_df = spark.read.format('com.github.saurfang.sas.spark').load(file_path)
-#             raw_imm_df = raw_imm_df.select(columns)
-#         else:
-#             df = spark.read.format('com.github.saurfang.sas.spark').load(file_path)
-#             df = df.select(columns)
-#             raw_imm_df = raw_imm_df.union(df)
-
-#     # add immigration id
-#     raw_imm_df = raw_imm_df.withColumn("immigration_id", F.monotonically_increasing_id())
-
-#     return raw_imm_df
-
-def read_raw_immigration_data(s3_bucket, s3_client, spark, raw_imm_table_columns, raw_imm_folder_prefix="18-83510-I94-Data-2016/"):
+def read_raw_immigration_data(
+        s3_bucket,\
+        s3_client,\
+        spark,\
+        raw_imm_table_columns,\
+        raw_imm_folder_prefix="18-83510-I94-Data-2016/"
+    ):
     """
-    Prefix="18-83510-I94-Data-2016/"
+    Reads the raw i94 immigration data files from the S3 bucket and return a Spark dataframe 
+    containing the i94 immigration data. A unique immigration_id will be added to the dataframe.
+
+    @type s3_bucket: str
+    @type s3_client: boto3 client
+    @type spark: SparkSession
+    @type raw_imm_table_columns: List of str
+    @type raw_imm_folder_prefix: str
+    @rtype raw_imm_df: Spark DataFrame
     """
     files = []
 
@@ -143,6 +127,14 @@ def read_raw_immigration_data(s3_bucket, s3_client, spark, raw_imm_table_columns
     return raw_imm_df
 
 def generate_immigration_fact_table(raw_imm_df):
+    """
+    Reads the raw i94 immigration Spark dataframe, and return the immigration fact table in
+    a Spark dataframe.
+
+    @type raw_imm_df: Spark DataFrame
+    @rtype imm_fact_table: Spark DataFrame
+    """
+
     imm_fact_table_col = ["immigration_id", "fltno", "visatype", "i94port", "i94yr", "i94mon"]
 
     imm_fact_table = raw_imm_df.select(imm_fact_table_col)\
@@ -162,6 +154,13 @@ def generate_immigration_fact_table(raw_imm_df):
     return imm_fact_table
 
 def generate_flight_dimension_table(raw_imm_df):
+    """
+    Reads the raw i94 immigration Spark dataframe, and return the flight dimension table in
+    a Spark dataframe.
+
+    @type raw_imm_df: Spark DataFrame
+    @rtype flight_dim_table: Spark DataFrame
+    """
     flight_dim_table_col = ["fltno", "airline"]
 
     flight_dim_table = raw_imm_df.select(flight_dim_table_col)\
@@ -171,6 +170,13 @@ def generate_flight_dimension_table(raw_imm_df):
     return flight_dim_table
 
 def generate_visitor_dimension_table(raw_imm_df):
+    """
+    Reads the raw i94 immigration Spark dataframe, and return the visitor dimension table in
+    a Spark dataframe.
+
+    @type raw_imm_df: Spark DataFrame
+    @rtype visitor_dim_table: Spark DataFrame
+    """
     visitor_dim_table_col = ["immigration_id", "biryear", "occup", "i94res"]
 
     visitor_dim_table = raw_imm_df.select(visitor_dim_table_col)\
@@ -186,6 +192,14 @@ def generate_visitor_dimension_table(raw_imm_df):
     return visitor_dim_table
 
 def generate_trip_records_dimension_table(raw_imm_df):
+    """
+    Reads the raw i94 immigration Spark dataframe, and return the trip records dimension table in
+    a Spark dataframe.
+
+    @type raw_imm_df: Spark DataFrame
+    @rtype trip_records_dim_table: Spark DataFrame
+    """
+
     trip_records_dim_table_col = [
         "immigration_id", "arrdate", "i94yr", "i94mon", "i94cit",\
         "depdate", "dtadfile", "entdepa", "entdepd",\
@@ -226,6 +240,13 @@ def generate_trip_records_dimension_table(raw_imm_df):
     return trip_records_dim_table
 
 def generate_visa_dim_table(raw_imm_df):
+    """
+    Reads the raw i94 immigration Spark dataframe, and return the visa dimension table in
+    a Spark dataframe.
+
+    @type raw_imm_df: Spark DataFrame
+    @rtype visa_dim_table: Spark DataFrame
+    """
     visa_dim_table_col = ["visatype", "i94visa"]
 
     visa_dim_table = raw_imm_df.select(visa_dim_table_col)\
@@ -237,6 +258,17 @@ def generate_visa_dim_table(raw_imm_df):
     return visa_dim_table
 
 def write_table_to_parquet_in_s3(table_df, table_name, s3_output_bucket_path, partition_by_year_month=False):
+    """
+    Writes a Spark dataframe into parquet files that will be stored on the specified S3 bucket.
+    If partition_by_year_month, the parquet files will be partitioned by _year and _month
+    columns.
+
+    @type table_df: Spark DataFrame
+    @type table_name: str
+    @type s3_output_bucket_path: str
+    @type partition_by_year_month: Boolean
+    @rtype None
+    """
     # flight_dimension.parquet
     full_table_name = "".join([table_name, ".parquet"])
     if partition_by_year_month:
@@ -249,6 +281,19 @@ def write_table_to_parquet_in_s3(table_df, table_name, s3_output_bucket_path, pa
 
 
 def extract_new_columns(original_column):
+    """
+    Extract a list of column names from an original column that combines their
+    names together. Also convert all characters to lower-case, as well as
+    replace spaces in column names with underscores.
+
+    >>> original_column = ["City;State;Median Age;Male Population"]
+    >>> new_columns = extract_new_columns(original_column)
+    >>> new_columns
+    ["city", "state", "median_age", "male_population"]
+
+    @type original_column: 
+    @rtype new_columns
+    """
     new_columns = original_column.split(";")
     # lower-case column names
     new_columns = [new_col.lower() for new_col in new_columns]
@@ -257,6 +302,26 @@ def extract_new_columns(original_column):
     return new_columns
 
 def clean_cities_demog_table(us_cities_demog_df):
+    """
+    Returns a cleaned cities demographics table. For example:
+    
+    |   City;State;Median Age   |
+    |---------------------------|
+    |Silver Spring;Maryland;33.8|
+    | Quincy;Massachusetts;41.0 |
+    |---------------------------|
+
+    will be transformed into
+
+    |      city     |     state     |  median_age |
+    |---------------------------------------------|
+    | Silver Spring |    Maryland   |     33.8    |
+    |     Quincy    | Massachusetts |     41.0    |
+    |---------------------------------------------|
+
+    @type us_cities_demog_df: Spark DataFrame
+    @rtype new_us_cities_demog_df: Spark DataFrame
+    """
     original_column = us_cities_demog_df.columns[0]
     new_columns = extract_new_columns(original_column)
     
@@ -271,10 +336,23 @@ def clean_cities_demog_table(us_cities_demog_df):
     return new_us_cities_demog_df
 
 def extract_sub_df(df, columns):
+    """
+    Extracts a sub-table from a given table based on the specified columns
+
+    @type df: Spark DataFrame
+    @rtype columns: List of str
+    """
     sub_df = df.select(columns).dropDuplicates()
     return sub_df
 
 def extract_city_and_state(city_state_str):
+    """
+    Extracts the individual city and state strings from a givem string.
+
+    @type city_state_str: str
+    @rtype city: str
+    @rtype state: str
+    """
     if "," in city_state_str:
         city, state = city_state_str.split(",")[0].strip(),\
                         city_state_str.split(",")[1].strip()
@@ -285,6 +363,22 @@ def extract_city_and_state(city_state_str):
     return city, state
 
 def extract_ports_and_cities(txt_file, schema, spark):
+    """
+    Creates a Spark dataframe containing the U.S. port of arrival code
+    and the city from the i94 immigration data dictionary file.
+
+    For example:
+
+    | us_port_of_arrival_code |    city   |
+    |-------------------------|-----------|
+    |           ALC           |   Alcan   |
+    |           ANC           | Anchorage |
+
+    @type txt_file: SAS or text file
+    @type schema: Spark Schema
+    @type spark: SparkSession
+    @rtype ports_and_cities_df: Spark DataFrame
+    """
     processing_i94port = False
 
     ports_and_cities_df_values = []
@@ -331,19 +425,6 @@ def main():
 
     spark = create_spark_session()
 
-    # s3_data_path = s3://udend-capstone-data-xj/18-83510-I94-Data-2016/*.sas7bdat
-    # raw_imm_data_s3_path = "".join([
-    #     "s3://",\
-    #     s3_bucket_raw_data,\
-    #     "/18-83510-I94-Data-2016"
-    # ])
-    #raw_imm_data_s3_path = "../../data/18-83510-I94-Data-2016"
-    
-    # raw_imm_data = read_raw_immigration_data(
-    #                     s3_data_path=raw_imm_data_s3_path,\
-    #                     spark=spark,\
-    #                     columns=raw_imm_data_schema
-    #                 )
     raw_immigration_folder_name_in_s3 = args.immigration_data_folder_name
     raw_immigration_folder_prefix = "".join([raw_immigration_folder_name_in_s3, "/"])
 
@@ -369,9 +450,7 @@ def main():
     s3_client.download_file(Bucket=s3_bucket_raw_data, Key=immigration_data_dictionary_filename, Filename=immigration_data_dictionary_filename)
     immigration_data_dictionary = open(immigration_data_dictionary_filename, "r")
     
-    # s3_output_path = s3://udend-capstone-datalake-xj
     transformed_tables_output_path_in_s3 = "".join(["s3://", s3_bucket_transformed_datalake])
-    #transformed_tables_output_path_in_s3 = "output_data"
     
     imm_fact_table = generate_immigration_fact_table(raw_imm_df=raw_imm_data)
     write_table_to_parquet_in_s3(

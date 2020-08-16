@@ -31,12 +31,31 @@ def process_argument():
     return args
 
 def check_empty_table(spark_df, spark_df_name):
+    """
+    Check if the Spark DataFrame is empty.
+
+    @type spark_df: Spark DataFrame
+    @type spark_df_name: str
+    @rtype None
+    """
     if spark_df.count() == 0:
         raise AssertionError("FAIL: {} is empty".format(spark_df_name))
     else:
         print("PASS: Table {} pass empty table check".format(spark_df_name))
 
 def count_null_values_by_column(spark_df, columns_to_check):
+    """
+    Returns a dictionary that counts the number of null values in each column
+    of the Spark DataFrame.
+
+    An example of the dictionary:
+
+    {"flight_number": 0, "visa_type": 3}
+
+    @type spark_df: Spark DataFrame
+    @type columns_to_check: List of str
+    @rtype col_nullcnt_dict: dict
+    """
     col_nullcnt_dict = {}
     null_counts_df = spark_df.select([F.count(F.when(F.isnan(col), col)).alias(col) for col in columns_to_check])
     for index, col in enumerate(columns_to_check):
@@ -45,6 +64,14 @@ def count_null_values_by_column(spark_df, columns_to_check):
     return col_nullcnt_dict
 
 def check_table_columns_for_null_values(spark_df, spark_df_name, columns_to_check):
+    """
+    Check a Spark DataFrame for the presence of null values in the specified columns.
+
+    @type spark_df: Spark DataFrame
+    @type spark_df_name: str
+    @type columns_to_check: List of str
+    @rtype None
+    """
     null_present = False
     print("Checking table {} for null values".format(spark_df_name))
 

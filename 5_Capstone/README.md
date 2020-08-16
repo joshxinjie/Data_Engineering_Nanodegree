@@ -192,11 +192,15 @@ Place the source data in your local repository according to this file structure.
   |-- README.md
 ```
 
-#### Step 7: Start the Upload Raw Data to S3 DAG by switching it from OFF to ON.
+#### Step 7: Update config.cfg if needed.
 
-#### Step 8: Start the Data lake ETL DAG by switching it from OFF to ON.
+The `config.cfg` file is located in the config folder. You may wish to change certain fields, such as the S3 bucket names, file directories and the EMR cluster configuration details. 
 
-#### Step 9: Run the following command in the termianl when you want to stop the Airflow server.
+#### Step 8: Start the Upload Raw Data to S3 DAG by switching it from OFF to ON.
+
+#### Step 9: Start the Data lake ETL DAG by switching it from OFF to ON.
+
+#### Step 10: Run the following command in the termianl when you want to stop the Airflow server.
 
 ```
 docker-compose -f docker-compose-CeleryExecutor.yml down

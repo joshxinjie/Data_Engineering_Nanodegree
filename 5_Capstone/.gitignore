@@ -29,5 +29,7 @@ pgdata
 raw_data
 NOTES.md
 
+/src/upload_raw_data.py
+
 !config/airflow.cfg
 !config.cfg

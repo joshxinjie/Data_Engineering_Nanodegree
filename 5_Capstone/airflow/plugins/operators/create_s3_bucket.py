@@ -3,6 +3,20 @@ from airflow.utils.decorators import apply_defaults
 from airflow.hooks.S3_hook import S3Hook
 
 class CreateS3BucketOperator(BaseOperator):
+    """
+    Operator to create AWS S3 bucket. If bucket already exists, the
+    operator will skip the creation.
+    
+    :param aws_credentials_id           The AWS Access Key ID and AWS
+                                        Secret Key
+    :type aws_credentials_id            string
+    :param s3_bucket                    The name of the S3 bucket to be
+                                        created
+    :type s3_bucket                     string
+    :param region                       The AWS Region where AWS S3 stores
+                                        the buckets
+    :type region                        string
+    """
     
     @apply_defaults
     def __init__(
