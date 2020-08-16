@@ -26,5 +26,7 @@ sftp-config.json
 __pycache__
 
 pgdata
+raw_data
 
 !config/airflow.cfg
+!config.cfg

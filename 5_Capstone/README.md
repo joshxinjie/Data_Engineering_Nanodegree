@@ -1,44 +1,42 @@
-Strategy
-1. Upload data to S3. Can have seperate DAG
-2. Run etl with AWS EMR S3
-3. Store transformed tables on S3
-4. Perform sample query on data
+# Udacity Data Engineering Nanodegree Capstone Project: US Immigration Data Lake
 
-US Immigration Database
+This is my submission for the Udacity Data Engineering Nanodegree Capstone Project assignment. The project utilizes Apache Airflow to automate and monitor the data lake ETL.
 
-## Raw Data
-US Cities
-  - clean it by seperating data into their individual columns. Can be used to merge with immigration data on cities.
-  - Must do.
-i94 port to city name
-  - Generate dataset from i94 immigration dataset description. 
-  - Map i94 port to town and city names. 
-  - Can write python script to convert to csv. Can write python script to convert to csv.
-  - Must do.
-i94 immigration data
-  - Must have.
-i94 Country Code table (No need)
-  - Generate dataset from i94 immigration dataset description. 
-  - i94 codes to country name. 
-  - Can write python script to convert to csv. 
-  - May not be necessary if not planning to add country info.
+There are 2 ETL DAGs for the project, both of which are managed by Airflow. The first DAG will orchastrate the upload of the source data from a local repository to S3. The second DAG orchastrates the data lake ETL pipeline, which will extract the data from S3, process them using Spark, and then load the transformed data back into S3 as a set of dimensional tables.
 
-## Fact Table
+
+## Source Data
+
+### 1. U.S. I94 Immigration Data 2016
+This dataset was originally obtained from the [US National Tourism and Trade Office](https://travel.trade.gov/research/reports/i94/historical/2016.html). The data dictionary for this dataset can be found in the file `I94_SAS_Labels_Descriptions.SAS`. This dataset was provided in the Udacity workspace for students enrolled in the program.
+
+### 2. U.S. City Demographic Data
+This data comes from [OpenSoft](https://public.opendatasoft.com/explore/dataset/us-cities-demographics/export/).
+
+
+## Data Model
+
+The Star schema is used for this project. There are several benefits for using the Star schema. These includes having denormalize tables, simplified queries, and fast aggregation of the data. The Star schema is usually less ideal for handling one-to-many or many-to-many relationships between the tables. Hence, the following tables are created to have only one-to-one relationships.
+
+### 1. Fact Table
 Immigration
   - immigration_id: The unique ID for the respondent's immigration record. Primary key for this table. Foreign key for `visitor` and `trip_records` tables.
   - flight_number: The flight number of the respondent. Foreign key for `flight` table.
   - visa_type: The visa class of the respondent. Foreign key for `visa` table.
   - us_port_of_arrival_code: The US port of arrival code of the respondent. Foreign key for `us_cities_general_demog` table and `us_cities_race_demog` table
 
-## Dimension Tables
+### 2. Dimension Tables
+
 flight
   - flight_number: The flight number of the respondent. Primary key for this table.
   - airline: The airline taken by the respondent.
+
 visitor
   - immigration_id: The unique ID for the respondent's immigration record. Primary key for this table.
   - birth_year: The birth year of the respondent.
   - occupation: The respondent's occupation in the US.
   - country_of_residence: The respondent's country of residence in the US.
+
 trip_records
   - immigration_id: The unique ID for the respondent's immigration record. Primary key for the table.
   - arrival_date: The respondent's arrival date in the US.
@@ -54,9 +52,11 @@ trip_records
   - state_of_visa_issued: The state where the visa is issued to the respondent.
   - _year: Partitioning column.
   - _month: Partitioning column.
+
 visa: The visa information of the respondents.
   - visa_type: The respondent's visa class. A more granular visa classification such as Wt, B2, etc. Primary key for the table.
   - visa_category: The respondent's generic visa class (student, pleasure, business).
+
 us_cities_general_demog: The general demographics data of US cities.
   - us_port_of_arrival_code: The US port of arrival code for the city. Primary key for this table.
   - city: The name of the US city
@@ -69,88 +69,154 @@ us_cities_general_demog: The general demographics data of US cities.
   - foreign-born: The number of foreignborn in the US city.
   - average_household_size: The average household size in the US city.
   - state_code: The state code.
+
 us_cities_race_demog: The racial demographics data of US cities.
   - us_port_of_arrival_code: The US port of arrival code for the city. Primary key for this table.
   - race: The racial group.
   - count: The population count of the racial group
 
 
-docker-compose -f docker-compose-CeleryExecutor.yml up -d
-http://localhost:8080/admin/
-docker-compose -f docker-compose-CeleryExecutor.yml down
+## Purpose of the Data Model
 
-Other Approach
-Read i94 immigration data into Spark
-Read original IATA airport code data into Spark
-Read original ISO country code data into Spark. This uses ISO-3166-1 and ISO-3166-2 Country and Dependent Territories Lists with UN Regional Codes.
-Read and clean i94 airport code into Spark. This is different from airport code and contains same airport codes as immigration data.
-Read and clean i94 country codes into Spark. This is different from country code and contains same country codes as immigration data.
-Create staging tables
-  - Write i94 immigration data into parquet file using Spark
-  - Write i94 airport code into parquet file using Spark
-  - Write i94 country code into parquet file using Spark
-  - Write IATA Airport data to parquet file using Spark
-  - Write ISO-3166 Country Code data to parquet file using Spark
-Read the parquet files back to Spark and perform data cleaning 
-  - Fill na values in immigration data and ISO country code with 0.0 or NA
-  - No further cleaning to i94 airport code and i94 country codes
-Plan data modelling
-  - Staging Tables
-    - i94 immigration
-    - IATA airport
-    - i94 airport code
-    - i94 country code
-    - ISO country code
-  - Fact Tables
-    - Immigration. Contains all foreign keys of the top 4 tables
-  - Dimension Tables
-    - Admissions
-    - Countries
-    - Airports
-    - Time
-Create admission tables and write to parquet. Created from i94 immigrations df
-  - admnum AS admission_nbr,
-  - i94res AS country_code, 
-  - i94bir AS age, 
-  - i94visa AS visa_code, 
-  - visatype AS visa_type, 
-  - gender AS person_gender
-Created countries dim table by joining i94 country code and ISO country code
-  - i94_cit          AS country_code,
-  - i94_country_name AS country_name,
-  - iso_country_code AS iso_ccode,
-  - alpha_2          AS iso_alpha_2,
-  - alpha_3          AS iso_alpha_3,
-  - iso_3166_2       AS iso_3166_2_code,
-  - name             AS iso_country_name,
-  - region           AS iso_region,
-  - sub_region       AS iso_sub_region,
-  - region_code      AS iso_region_code,
-  - sub_region_code  AS iso_sub_region_code
-Create airport dim table from i94 airport codes
-  - i94_port          AS airport_id, 
-  - i94_airport_name  AS airport_name,
-  - i94_airport_state AS airport_state
-Create time dim table from i94 immigrations data
-  - arrival_time             AS arrival_ts, 
-  - hour(arrival_time)       AS hour, 
-  - day(arrival_time)        AS day, 
-  - weekofyear(arrival_time) AS week,
-  - month(arrival_time)      AS month,
-  - year(arrival_time)       AS year,
-  - dayofweek(arrival_time)  AS weekday
-Create immigrations fact table from i94 immigration, i94 country code, i94 airport code and time tables
-  - immigration_id AS immigration_id, 
-  - arrival_time   AS arrival_time, foreign key to time table
-  - year           AS arrival_year,
-  - month          AS arrival_month,
-  - i94_port       AS airport_id, foreign key to airport table
-  - i94_cit        AS country_code, foreign key for country table
-  - admnum         AS admission_nbr, foreign key for admissions table
-  - i94mode        AS arrival_mode,
-  - departure_date AS departure_date,
-  - airline        AS airline,
-  - fltno          AS flight_nbr
-Perform data quality checks
-  - Check that all primary and secondary keys in star schema dimension and fact tables have values. No nulls and empty values
-  - Check that all tables have more than 0 rows.
+What's the goal? What queries will you want to run? How would Spark or Airflow be incorporated? Why did you choose the model you chose?
+
+The goal of this data lake is to answer questions regarding immigration to the U.S. For example, users will be able to answer questions such as:
+
+* Which are the top nationalities of visitors to the U.S.?
+* What is the average duration of stay for visitors to the U.S.?
+* Which are the most popular airlines taken by visitors to the U.S.?
+* Which are the most popular seasons for the arrival of visitors to the U.S.?
+* Are there any correlation between the demographics of U.S. cities and the number of visitors travelling there?
+
+These are just some of the questions that can be answered with this database.
+
+Both Spark and Airflow will be used to manage the data lake. Since the source dataset is relatively large (> 6 GB), and may not be able to fit onto a single computer, Spark is chosen for the ETL pipeline.
+
+Airflow is an open-sourced DAG-based, schedulable, data-pipeline tool from Airbnb that can run in mission-critical environments. Airflow has the following features:
+* A platform to programmatically author, schedule and monitor workflows. 
+* Author workflows as directed acyclic graphs (DAGs) of tasks. 
+* The airflow scheduler executes your tasks on an array of workers while following the specified dependencies. 
+* Rich command line utilities make performing complex surgeries on DAGs a snap. 
+* Has a user interface that makes it easy to visualize pipelines running in production, monitor progress, and troubleshoot issues when needed. 
+* Enable workflows to be defined as code. Hence they become more maintainable, versionable, testable, and collaborative.
+
+As such, Airfow will be used to schedule and maintain the ETL pipelines.
+
+
+## ETL DAGs
+
+### 1. Upload Raw Data to S3 DAG
+
+<img src="images/upload_raw_data_to_s3_dag.png" alt="drawing" width="800"/>
+
+This DAG is responsible for managing the upload of data from a local repository to an Amazon S3 bucket. This DAG is currently scheduled to run monthly at the start of every month.
+
+### 2. Data Lake ETL DAG
+
+<img src="images/datalake_etl_dag.png" alt="drawing" width="800"/>
+
+This DAG is responsible for managing the ETL pipeline that will extract the source data from S3, transform them into a set of dimensional tables with AWS EMR, and then load the transformed tables back into S3. This DAG is currently scheduled to run monthly at the start of every month.
+
+
+## How to Run
+
+### Step 1: Download Docker Engine and Docker Compose or Download Docker Desktop
+
+Docker Engine: https://docs.docker.com/engine/
+
+Docker Compose: https://docs.docker.com/compose/
+
+Docker Desktop: https://docs.docker.com/desktop/
+
+### Step 2: Clone this repository
+
+```
+git clone https://github.com/joshxinjie/Data_Engineering_Nanodegree.git
+```
+
+### Step 3: Change into the `5_Capstone` directory and run the following command in the terminal to start the Airflow server.
+
+```
+docker-compose -f docker-compose-CeleryExecutor.yml up -d
+```
+
+### Step 4: Go to the followung URL.
+
+```
+http://localhost:8080/admin/
+```
+
+### Step 5: Add an Airflow Connection. 
+
+Click on the Admin tab and select Connections.
+
+<img src="images/admin-connections.png" alt="drawing" width="800"/>
+
+Go to Connections, select Create.
+
+<img src="images/create-connection.png" alt="drawing" width="800"/>
+
+On the create connection page, enter the following values:
+* Conn Id: Enter aws_credentials.
+* Conn Type: Enter Amazon Web Services.
+* Login: Enter your Access key ID from your IAM User credentials.
+* Password: Enter your Secret access key from your IAM User credentials.
+* Extra: { "region_name": "us-west-2" } 
+
+<img src="images/aws_credentials.png" alt="drawing" width="800"/>
+
+Once you've entered these values, select Save.
+
+## Step 6: Prepare source dataset on your local computer.
+
+Place the source data in your local repository according to this file structure.
+
+```
+5_Capstone
+  |-- airflow
+  |-- config
+  |-- images
+  |-- notebooks
+  |-- script
+  |-- src
+  |-- raw_data
+        |-- 18-83510-I94-Data-2016
+              |-- i94_apr16_sub.sas7bdat
+              |-- i94_aug16_sub.sas7bdat
+              |-- ...
+        |-- I94_SAS_Labels_Descriptions.SAS
+        |-- us-cities-demographics.csv
+  |-- docker-compose-CeleryExecutor.yml
+  |-- Dockerfile
+  |-- requirements.txt
+  |-- README.md
+```
+
+## Step 7: Start the Upload Raw Data to S3 DAG by switching it from OFF to ON.
+
+## Step 8: Start the Data lake ETL DAG by switching it from OFF to ON.
+
+### Step 9: Run the following command in the termianl when you want to stop the Airflow server.
+
+```
+docker-compose -f docker-compose-CeleryExecutor.yml down
+```
+
+
+## Addressing Other Scenarios
+
+### 1. If the data was increased by 100x.
+
+Currently the Airflow server is run on a single container on a local server. If the data was increased by 100x, we may need to run our Airflow server on a cluster of machines. One option will be to host the Ariflow server on AWS EC2 instances.
+
+The ETL pipeline is currently performed by AWS EMR service. Should the size the of data increase by 100x, we simply only need to increase the number of EMR nodes used to execute the pipeline.
+
+Lastly, the S3 buckets can easily handle storage for extremely large datasets so the increase in the size of the data will not be an issue.
+
+### 2. If the pipelines were run on a daily basis by 7am.
+
+This can easily be addressed by scheduling the Airflow DAGs to run on a daily basis at 7 am. Currently, the DAGs are scheduled only to run once per month.
+
+### 3. If the database needed to be accessed by 100+ people.
+
+Users can use AWS services like AWS Athena to access the datalake. AWS Athena is serverless, so there is no infrastructure to manage, and it can easily support large number of users.

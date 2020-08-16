@@ -36,6 +36,7 @@ services:
             - ./requirements.txt:/requirements.txt
             - ./config:/usr/local/airflow/config
             - ./src:/usr/local/airflow/src
+            - ./raw_data:/usr/local/raw_data
         ports:
             - "8080:8080"
         command: webserver
@@ -69,6 +70,7 @@ services:
             - ./requirements.txt:/requirements.txt
             - ./config:/usr/local/airflow/config
             - ./src:/usr/local/airflow/src
+            - ./raw_data:/usr/local/raw_data
         environment:
             - LOAD_EX=n
             - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
@@ -91,6 +93,7 @@ services:
             - ./requirements.txt:/requirements.txt
             - ./config:/usr/local/airflow/config
             - ./src:/usr/local/airflow/src
+            - ./raw_data:/usr/local/raw_data
         environment:
             - FERNET_KEY=46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho=
             - EXECUTOR=Celery

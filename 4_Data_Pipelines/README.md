@@ -73,6 +73,7 @@ The source data resides in S3 and needs to be processed in Sparkify's data wareh
 <img src="images/connection-redshift.png" alt="drawing" width="800"/>
 
 7. Once you've entered these values, select Save.
+
 8. Start the DAG by switching it from OFF to ON.
 
 <img src="images/start_dag.png" alt="drawing" width="800"/>

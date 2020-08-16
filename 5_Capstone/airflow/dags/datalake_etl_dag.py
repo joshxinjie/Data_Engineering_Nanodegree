@@ -27,7 +27,7 @@ S3_LOGS_BUCKET_NAME=config["EMR"]["S3_LOGS_BUCKET_NAME"]
 
 EMR_ETL_SCRIPTS_LOCAL_DIR=config["EMR_ETL_SCRIPTS"]["SCRIPTS_DIR"]
 
-S3_RAW_DATA_BUCKET=config["S3_DATA_BUCKET"]["BUCKET_NAME"]
+S3_RAW_DATA_BUCKET=config["S3_RAW_DATA_BUCKET"]["BUCKET_NAME"]
 S3_DATALAKE_BUCKET=config["S3_DATALAKE_BUCKET"]["BUCKET_NAME"]
 S3_EMR_LOGS_BUCKET=config["EMR"]["S3_LOGS_BUCKET_NAME"]
 
@@ -130,13 +130,13 @@ default_args = {
     'start_date': datetime(2020, 7, 1),
     'end_date': datetime(2020, 9, 1),
     'email_on_retry': False,
-    'retries': 3,
+    'retries': 2,
     'retry_delay': timedelta(minutes=5),
     # do not backfill dag runs
     'catchup': False
 }
 
-dag = DAG('immigration_etl_dag',
+dag = DAG('datalake_etl_dag',
           default_args=default_args,
           description='Load and transform data in s3 with AWS EMR',
           schedule_interval='@monthly',
@@ -145,7 +145,7 @@ dag = DAG('immigration_etl_dag',
 start_operator = DummyOperator(task_id='Begin_execution', dag=dag)
 
 create_code_bucket = CreateS3BucketOperator(
-    task_id='Create_code_bucket',
+    task_id='Create_code_bucket_in_s3',
     aws_credentials_id="aws_credentials",
     s3_bucket=S3_CODE_BUCKET_NAME,
     region=AWS_REGION,
@@ -217,6 +217,7 @@ cluster_remover = EmrTerminateJobFlowOperator(
     dag=dag
 )
 
+end_operator = DummyOperator(task_id='End_execution', dag=dag)
 
 start_operator >> create_code_bucket
 start_operator >> create_datalake_bucket
@@ -235,3 +236,5 @@ step_adder >> watch_etl
 watch_etl >> watch_data_quality_check
 
 watch_data_quality_check >> cluster_remover
+
+cluster_remover >> end_operator

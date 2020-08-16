@@ -38,7 +38,8 @@ class UploadFilesToS3Operator(BaseOperator):
         print(os.listdir(os.getcwd()))
         for filepath in files:
             try:
-                filename = filepath.split("/")[1]
+                filename = filepath.split("/")[-1]
+                #filename = filter(lambda x: self.file_extension in x, filepath.split("/"))[0]
                 if self.s3_target_folder:
                     s3_key = "".join([self.s3_target_folder, "/", filename])
                 else:
