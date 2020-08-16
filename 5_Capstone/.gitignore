@@ -27,9 +27,7 @@ __pycache__
 
 pgdata
 raw_data
-NOTES.md
-
-/src/upload_raw_data.py
+deprecated
 
 !config/airflow.cfg
 !config.cfg
