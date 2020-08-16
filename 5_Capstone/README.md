@@ -105,13 +105,13 @@ As such, Airfow will be used to schedule and maintain the ETL pipelines.
 
 ## ETL DAGs
 
-### 1. Upload Raw Data to S3 DAG
+#### 1. Upload Raw Data to S3 DAG
 
 <img src="images/upload_raw_data_to_s3_dag.png" alt="drawing" width="800"/>
 
 This DAG is responsible for managing the upload of data from a local repository to an Amazon S3 bucket. This DAG is currently scheduled to run monthly at the start of every month.
 
-### 2. Data Lake ETL DAG
+#### 2. Data Lake ETL DAG
 
 <img src="images/datalake_etl_dag.png" alt="drawing" width="800"/>
 
@@ -120,7 +120,7 @@ This DAG is responsible for managing the ETL pipeline that will extract the sour
 
 ## How to Run
 
-### Step 1: Download Docker Engine and Docker Compose or Download Docker Desktop
+#### Step 1: Download Docker Engine and Docker Compose or Download Docker Desktop
 
 Docker Engine: https://docs.docker.com/engine/
 
@@ -128,25 +128,25 @@ Docker Compose: https://docs.docker.com/compose/
 
 Docker Desktop: https://docs.docker.com/desktop/
 
-### Step 2: Clone this repository
+#### Step 2: Clone this repository
 
 ```
 git clone https://github.com/joshxinjie/Data_Engineering_Nanodegree.git
 ```
 
-### Step 3: Change into the `5_Capstone` directory and run the following command in the terminal to start the Airflow server.
+#### Step 3: Change into the `5_Capstone` directory and run the following command in the terminal to start the Airflow server.
 
 ```
 docker-compose -f docker-compose-CeleryExecutor.yml up -d
 ```
 
-### Step 4: Go to the followung URL.
+#### Step 4: Go to the followung URL.
 
 ```
 http://localhost:8080/admin/
 ```
 
-### Step 5: Add an Airflow Connection. 
+#### Step 5: Add an Airflow Connection. 
 
 Click on the Admin tab and select Connections.
 
@@ -167,7 +167,7 @@ On the create connection page, enter the following values:
 
 Once you've entered these values, select Save.
 
-## Step 6: Prepare source dataset on your local computer.
+#### Step 6: Prepare source dataset on your local computer.
 
 Place the source data in your local repository according to this file structure.
 
@@ -192,11 +192,11 @@ Place the source data in your local repository according to this file structure.
   |-- README.md
 ```
 
-## Step 7: Start the Upload Raw Data to S3 DAG by switching it from OFF to ON.
+#### Step 7: Start the Upload Raw Data to S3 DAG by switching it from OFF to ON.
 
-## Step 8: Start the Data lake ETL DAG by switching it from OFF to ON.
+#### Step 8: Start the Data lake ETL DAG by switching it from OFF to ON.
 
-### Step 9: Run the following command in the termianl when you want to stop the Airflow server.
+#### Step 9: Run the following command in the termianl when you want to stop the Airflow server.
 
 ```
 docker-compose -f docker-compose-CeleryExecutor.yml down
@@ -219,4 +219,4 @@ This can easily be addressed by scheduling the Airflow DAGs to run on a daily ba
 
 ### 3. If the database needed to be accessed by 100+ people.
 
-Users can use AWS services like AWS Athena to access the datalake. AWS Athena is serverless, so there is no infrastructure to manage, and it can easily support large number of users.
+Users can use AWS services such as AWS Athena to access the data lake. AWS Athena is serverless, so there is no infrastructure to manage. In addition, it can easily support large number of users.
