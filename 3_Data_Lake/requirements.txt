@@ -1,2 +1,2 @@
-pyspark==2.4.3
+pyspark==3.2.2
 boto3==1.9.7
